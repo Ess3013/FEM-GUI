@@ -49,6 +49,3 @@ end
 hold all;
 patch('faces', cl', 'Vertices', p', 'facecolor', 'c', 'edgecolor', 'k');
 plot(p(1,:), p(2,:), 'o', 'color', 'k');
-
-p'
-cl'
