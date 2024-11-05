@@ -1,4 +1,4 @@
-function [p_transpose, cl_transpose] = GenerateMesh(H, W, Nx, Ny)
+function [p_transpose, cl_transpose] = GenerateMesh( W, H, Nx, Ny)
     
     Nx = Nx+1;
     Ny = Ny+1;
