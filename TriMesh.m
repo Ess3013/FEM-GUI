@@ -12,6 +12,7 @@ dy = H / (Ny-1);
 p = zeros(2,Nx*Ny);
 cl = zeros(3, 2 * (Nx-1) * (Ny-1));
 
+%lol
 index = 0;
 for i = 1:Ny
 
