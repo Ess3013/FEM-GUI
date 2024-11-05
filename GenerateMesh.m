@@ -37,10 +37,10 @@ function [p_transpose, cl_transpose] = GenerateMesh( W, H, Nx, Ny)
         end
     end
     
-    % Plot the mesh
-    hold all;
-    patch('faces', cl', 'Vertices', p', 'facecolor', 'c', 'edgecolor', 'k');
-    plot(p(1,:), p(2,:), 'o', 'color', 'k');
+    % % Plot the mesh
+    % hold all;
+    % patch('faces', cl', 'Vertices', p', 'facecolor', 'c', 'edgecolor', 'k');
+    % plot(p(1,:), p(2,:), 'o', 'color', 'k');
     
     % Return transposed matrices
     p_transpose = p';
