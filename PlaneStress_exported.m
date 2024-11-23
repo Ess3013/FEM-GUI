@@ -37,6 +37,9 @@ classdef PlaneStress_exported < matlab.apps.AppBase
         SideNodes % Description
         Displacements % Description
         Forces
+        Boundary % Description
+        surfForce
+        poiForce
     end
 
     methods (Access = private)
@@ -70,6 +73,23 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             end
 
 
+            %% Boundary conditions
+            strock=max(app.WidthEditField_2.Value,app.HeightEditField.Value)/20
+            for dm=1:size(app.NodeCoordinates,1)
+                if app.Boundary(2*dm-1,1)==0
+
+                    plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)-strock,app.NodeCoordinates(dm,1)-strock,app.NodeCoordinates(dm,1)], ...
+                                    [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+(strock/2),app.NodeCoordinates(dm,2)-(strock/2),app.NodeCoordinates(dm,2)],'Color','b');
+
+                elseif ~isnan(app.Boundary(2*dm-1,1))
+
+
+
+                end
+
+            end
+
+
         end
     end
 
@@ -84,6 +104,11 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             app.Forces=zeros(8,2);
             app.UITable.Data=app.Displacements;
             app.ProcessingLabel.Text="Ready for inputs";
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%review%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+           app.Boundary=NaN(1000,1);
+           app.surfForce=zeros(1000,1);
+           app.poiForce=zeros(1000,1);
         end
 
         % Value changed function: WidthEditField_2
@@ -140,13 +165,17 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             t = app.ThicknessEditField.Value;
             coord = app.NodeCoordinates;
             nodes = app.ElementNodes;
+            hDiv=app.HorizontalDivisionsEditField.Value;
+            vDiv=app.VerticalDivisionsEditField.Value;
+            width=app.WidthEditField_2.Value;
+            height=app.HeightEditField.Value;
 
             %Plane Stress
-            
+
             %% Calculating D
             D = E / (1-neu^2) * [1 neu 0;
-                                 neu 1 0;
-                                 0 0 (1-neu)/2];
+                neu 1 0;
+                0 0 (1-neu)/2];
             %%
 
             % Calculating kGlobal
@@ -156,21 +185,21 @@ classdef PlaneStress_exported < matlab.apps.AppBase
                 A = (coord(nodes(index,1),1)*(coord(nodes(index,2),2)-coord(nodes(index,3),2)) ...
                     +coord(nodes(index,2),1)*(coord(nodes(index,3),2)-coord(nodes(index,1),2)) ...
                     +coord(nodes(index,3),1)*(coord(nodes(index,1),2)-coord(nodes(index,2),2)))/2;
-                
+
                 %% Calculating B using beta and gamma
                 beta = [coord(nodes(index,2),2) - coord(nodes(index,3),2),
-                        coord(nodes(index,3),2) - coord(nodes(index,1),2),
-                        coord(nodes(index,1),2) - coord(nodes(index,2),2)];
+                    coord(nodes(index,3),2) - coord(nodes(index,1),2),
+                    coord(nodes(index,1),2) - coord(nodes(index,2),2)];
                 gamma = [coord(nodes(index,3),1) - coord(nodes(index,2),1),
-                        coord(nodes(index,1),1) - coord(nodes(index,3),1),
-                        coord(nodes(index,2),1) - coord(nodes(index,1),1)];
+                    coord(nodes(index,1),1) - coord(nodes(index,3),1),
+                    coord(nodes(index,2),1) - coord(nodes(index,1),1)];
                 B = (1/(2*A)) * [beta(1) 0 beta(2) 0 beta(3) 0;
-                                0 gamma(1) 0 gamma(2) 0 gamma(3);
-                                gamma(1) beta(1) gamma(2) beta(2) gamma(3) beta(3)];
-                
+                    0 gamma(1) 0 gamma(2) 0 gamma(3);
+                    gamma(1) beta(1) gamma(2) beta(2) gamma(3) beta(3)];
+
                 %% Calculating local k
                 k = t*A*B'*D*B;
-                
+
                 %% kGlobal assembly
                 % Rows 1:2 with columns 1:6
                 kGlobal((nodes(index,1)*2)-1:nodes(index,1)*2, (nodes(index,1)*2)-1:nodes(index,1)*2)=...
@@ -182,7 +211,7 @@ classdef PlaneStress_exported < matlab.apps.AppBase
                 kGlobal((nodes(index,1)*2)-1:nodes(index,1)*2, (nodes(index,3)*2)-1:nodes(index,3)*2)=...
                     kGlobal((nodes(index,1)*2)-1:nodes(index,1)*2, (nodes(index,3)*2)-1:nodes(index,3)*2)...
                     +k(1:2,5:6);
-                
+
                 % Rows 3:4 with columns 1:6
                 kGlobal((nodes(index,2)*2)-1:nodes(index,2)*2, (nodes(index,1)*2)-1:nodes(index,1)*2)=...
                     kGlobal((nodes(index,2)*2)-1:nodes(index,2)*2, (nodes(index,1)*2)-1:nodes(index,1)*2)...
@@ -205,9 +234,107 @@ classdef PlaneStress_exported < matlab.apps.AppBase
                     kGlobal((nodes(index,3)*2)-1:nodes(index,3)*2, (nodes(index,3)*2)-1:nodes(index,3)*2)...
                     +k(5:6,5:6);
                 %% End of kGlobal Assembly
+
+
+
+
             end
-            
- 
+            %% Force Matrix
+            % Point Loads
+
+            pointForce(app.CornerNodes(1:4)*2-1,1)=app.Forces(1:4,1);
+            pointForce(app.CornerNodes(1:4)*2,1)=app.Forces(1:4,2);
+
+            app.poiForce=pointForce;
+
+            %Surface Loads
+            surfaceForce=zeros(size(coord,1)*2,1);
+            surfaceForce([app.SideNodes(1,1:hDiv+1)*2-1],1)=surfaceForce([app.SideNodes(1,1:hDiv+1)*2-1],1)+(app.Forces(5,1)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(1,1:hDiv+1)*2],1)=surfaceForce([app.SideNodes(1,1:hDiv+1)*2],1)+(app.Forces(5,2)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(2,1:vDiv+1)*2-1],1)=surfaceForce([app.SideNodes(2,1:vDiv+1)*2-1],1)+(app.Forces(6,1)*height*t)/(vDiv+1);
+            surfaceForce([app.SideNodes(2,1:vDiv+1)*2],1)=surfaceForce([app.SideNodes(2,1:vDiv+1)*2],1)+(app.Forces(6,2)*height*t)/(vDiv+1);
+            surfaceForce([app.SideNodes(3,1:hDiv+1)*2-1],1)=surfaceForce([app.SideNodes(3,1:hDiv+1)*2-1],1)+(app.Forces(7,1)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(3,1:hDiv+1)*2],1)=surfaceForce([app.SideNodes(3,1:hDiv+1)*2],1)+(app.Forces(7,2)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(4,1:vDiv+1)*2-1],1)=surfaceForce([app.SideNodes(4,1:vDiv+1)*2-1],1)+(app.Forces(8,1)*height*t)/(vDiv+1);
+            surfaceForce([app.SideNodes(4,1:vDiv+1)*2],1)=surfaceForce([app.SideNodes(4,1:vDiv+1)*2],1)+(app.Forces(8,2)*height*t)/(vDiv+1);
+
+            app.surfForce=surfaceForce;
+            %Body Loads
+
+
+            totalForce=pointForce+surfaceForce;
+
+
+            %% Boundary Conditions
+            boundaries=NaN(size(coord,1)*2,1);
+
+
+
+            for dm=1:hDiv+1
+                if ~isnan(app.Displacements(5,1))
+                    boundaries([app.SideNodes(1,1:hDiv+1)*2-1],1)=app.Displacements(5,1);
+                end
+                if ~isnan(app.Displacements(5,2))
+                    boundaries([app.SideNodes(1,1:hDiv+1)*2],1)=app.Displacements(5,2);
+                end
+                if ~isnan(app.Displacements(7,1))
+                    boundaries([app.SideNodes(3,1:hDiv+1)*2-1],1)=app.Displacements(7,1);
+                end
+                if ~isnan(app.Displacements(7,2))
+
+                    boundaries([app.SideNodes(3,1:hDiv+1)*2],1)=app.Displacements(7,2);
+                end
+            end
+
+
+            for dm=1:vDiv+1
+
+                if ~isnan(app.Displacements(6,1))
+                    boundaries([app.SideNodes(2,1:vDiv+1)*2-1],1)= app.Displacements(6,1);
+                end
+                if ~isnan(app.Displacements(6,2))
+                    boundaries([app.SideNodes(2,1:vDiv+1)*2],1)=app.Displacements(6,2);
+                end
+                if ~isnan(app.Displacements(8,1))
+
+                    boundaries([app.SideNodes(4,1:vDiv+1)*2-1],1)=app.Displacements(8,1);
+                end
+                if ~isnan(app.Displacements(8,2))
+                    boundaries([app.SideNodes(4,1:vDiv+1)*2],1)=app.Displacements(8,2);
+                end
+
+            end
+
+            for dm=1:4
+                if ~isnan(app.Displacements(1:dm,1))
+                    boundaries(app.CornerNodes(1:dm)*2-1,1)=app.Displacements(1:dm,1);
+                end
+                if ~isnan(app.Displacements(1:dm,2))
+
+                    boundaries(app.CornerNodes(1:dm)*2,1)=app.Displacements(1:dm,2);
+                end
+            end
+
+            app.Boundary=boundaries;
+            %% Solve
+            c=max(abs(diag(kGlobal)))*1e6  ;
+
+            for dm=1:size(app.CornerNodes,1)*2
+
+                if ~isnan(boundaries(dm))
+
+                    kGlobal(dm,dm)=kGlobal(dm,dm)+c;
+                    totalForce(dm,1)=totalForce(dm,1)+c*boundaries(dm);
+                end
+            end
+            app.graph();
+            format long
+            c
+            kGlobal
+            boundaries
+            totalForce
+            cond(kGlobal)
+            Q=kGlobal\totalForce
 
         end
     end
