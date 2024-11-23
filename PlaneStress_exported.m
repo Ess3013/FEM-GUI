@@ -3,6 +3,14 @@ classdef PlaneStress_exported < matlab.apps.AppBase
     % Properties that correspond to app components
     properties (Access = public)
         UIFigure                       matlab.ui.Figure
+        KButton                        matlab.ui.control.Button
+        StrainButton                   matlab.ui.control.Button
+        NodesForceButton               matlab.ui.control.Button
+        NodesdButton                   matlab.ui.control.Button
+        StressButton                   matlab.ui.control.Button
+        CornerForceButton              matlab.ui.control.Button
+        ShowLabel                      matlab.ui.control.Label
+        CornerdButton                  matlab.ui.control.Button
         MaterialPropertiesLabel        matlab.ui.control.Label
         ThicknessEditField             matlab.ui.control.NumericEditField
         ThicknessEditFieldLabel        matlab.ui.control.Label
@@ -40,6 +48,18 @@ classdef PlaneStress_exported < matlab.apps.AppBase
         Boundary % Description
         surfForce
         poiForce
+        stress % Description
+        newFig1 % Description
+        newFig2
+        newFig3
+        newFig4
+        newFig5
+        newFig6
+        newFig7
+        originalK % Description
+        strain % Description
+        Q % Description
+        cornerD % Description
     end
 
     methods (Access = private)
@@ -368,6 +388,7 @@ classdef PlaneStress_exported < matlab.apps.AppBase
                     kGlobal((nodes(index,3)*2)-1:nodes(index,3)*2, (nodes(index,3)*2)-1:nodes(index,3)*2)...
                     +k(5:6,5:6);
                 %% End of kGlobal Assembly
+                app.originalK=kGlobal;
 
 
 
@@ -392,15 +413,61 @@ classdef PlaneStress_exported < matlab.apps.AppBase
                     totalForce(dm,1)=totalForce(dm,1)+c*boundaries(dm);
                 end
             end
-            app.graph();
-            format long
-            c;
-            kGlobal;
-            boundaries;
-            totalForce;
-            cond(kGlobal);
             Q=kGlobal\totalForce;
-            [Q(app.CornerNodes*2-1,1),Q(app.CornerNodes*2,1)]
+            %% Calculating Stresses
+
+            for index=1:size(app.ElementNodes,1)
+                elementDisplacement=[Q(app.ElementNodes(index,1)*2-1,1);Q(app.ElementNodes(index,1)*2,1);...
+                    Q(app.ElementNodes(index,2)*2-1,1);Q(app.ElementNodes(index,2)*2,1);...
+                    Q(app.ElementNodes(index,3)*2-1,1);Q(app.ElementNodes(index,3)*2,1)];
+                D = E / (1-neu^2) * [1 neu 0;
+                    neu 1 0;
+                    0 0 (1-neu)/2];
+                beta = [coord(nodes(index,2),2) - coord(nodes(index,3),2),
+                    coord(nodes(index,3),2) - coord(nodes(index,1),2),
+                    coord(nodes(index,1),2) - coord(nodes(index,2),2)];
+                gamma = [coord(nodes(index,3),1) - coord(nodes(index,2),1),
+                    coord(nodes(index,1),1) - coord(nodes(index,3),1),
+                    coord(nodes(index,2),1) - coord(nodes(index,1),1)];
+                B = (1/(2*A)) * [beta(1) 0 beta(2) 0 beta(3) 0;
+                    0 gamma(1) 0 gamma(2) 0 gamma(3);
+                    gamma(1) beta(1) gamma(2) beta(2) gamma(3) beta(3)];
+                app.stress(index,:)=[D*B*elementDisplacement]';
+
+                 %% Calculating Strain
+
+                app.strain(index,:)=[B*elementDisplacement]';
+                
+            end
+            format long
+               
+
+
+           
+            
+
+
+
+            %% enabling buttons
+            app.CornerdButton.Enable="on";
+            app.NodesdButton.Enable="on";
+            app.StressButton.Enable="on";
+            app.StrainButton.Enable="on";
+            app.CornerForceButton.Enable="on";
+            app.NodesForceButton.Enable="on";
+            app.KButton.Enable="on";
+            %% Preparing Q
+            app.Q=[Q(((1:size(app.NodeCoordinates,1))*2-1),1),Q(((1:size(app.NodeCoordinates,1))*2),1)];
+            app.cornerD=[Q(app.CornerNodes*2-1,1),Q(app.CornerNodes*2,1)];
+            
+
+
+
+
+            app.graph();
+
+
+            
 
             app.ProcessingLabel.Text="Ready for Input";
         end
@@ -408,7 +475,54 @@ classdef PlaneStress_exported < matlab.apps.AppBase
         % Value changed function: ThicknessEditField
         function ThicknessEditFieldValueChanged(app, event)
             value = app.ThicknessEditField.Value;
-            app.graph;
+            app.graph();
+        end
+
+        % Close request function: UIFigure
+        function UIFigureCloseRequest(app, event)
+            delete(app)
+            if isvalid(app.newFig1)
+                close(app.newFig1);
+            end
+        end
+
+        % Button pushed function: StressButton
+        function StressButtonPushed(app, event)
+            app.newFig1 = uifigure('Name', 'Stresses', 'Position', [100, 200, 650, 600]);
+            uit = uitable(app.newFig1,'Position', [50, 50, 550, 550]);
+            uit.ColumnName = {'Stress in X', 'Stress in Y','Shear XY'};
+            uit.Data = app.stress;
+        end
+
+        % Button pushed function: KButton
+        function KButtonPushed(app, event)
+            app.newFig2 = uifigure('Name', 'Stiffness Matrix', 'Position', [100, 200, 650, 600]);
+            uit = uitable(app.newFig2,'Position', [50, 50, 550, 550]);
+            uit.Data = app.originalK;
+        end
+
+        % Button pushed function: StrainButton
+        function StrainButtonPushed(app, event)
+            app.newFig3 = uifigure('Name', 'Stresses', 'Position', [100, 200, 650, 600]);
+            uit = uitable(app.newFig3,'Position', [50, 50, 550, 550]);
+            uit.ColumnName = {'Strain in X', 'Strain in Y','Angle Strain XY'};
+            uit.Data = app.strain;
+        end
+
+        % Button pushed function: NodesdButton
+        function NodesdButtonPushed(app, event)
+            app.newFig4 = uifigure('Name', 'Stresses', 'Position', [100, 200, 650, 600]);
+            uit = uitable(app.newFig4,'Position', [50, 50, 550, 550]);
+            uit.ColumnName = {'X', 'Y'};
+            uit.Data = app.Q;
+        end
+
+        % Button pushed function: CornerdButton
+        function CornerdButtonPushed(app, event)
+             app.newFig5 = uifigure('Name', 'Stresses', 'Position', [100, 200, 650, 600]);
+            uit = uitable(app.newFig5,'Position', [50, 50, 550, 550]);
+            uit.ColumnName = {'X', 'Y'};
+            uit.Data = app.cornerD;
         end
     end
 
@@ -420,8 +534,9 @@ classdef PlaneStress_exported < matlab.apps.AppBase
 
             % Create UIFigure and hide until all components are created
             app.UIFigure = uifigure('Visible', 'off');
-            app.UIFigure.Position = [100 100 890 498];
+            app.UIFigure.Position = [100 100 890 513];
             app.UIFigure.Name = 'MATLAB App';
+            app.UIFigure.CloseRequestFcn = createCallbackFcn(app, @UIFigureCloseRequest, true);
 
             % Create UIAxes
             app.UIAxes = uiaxes(app.UIFigure);
@@ -429,73 +544,73 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             xlabel(app.UIAxes, 'X')
             ylabel(app.UIAxes, 'Y')
             zlabel(app.UIAxes, 'Z')
-            app.UIAxes.Position = [485 123 375 358];
+            app.UIAxes.Position = [485 138 375 358];
 
             % Create WidthEditField_2Label
             app.WidthEditField_2Label = uilabel(app.UIFigure);
             app.WidthEditField_2Label.HorizontalAlignment = 'right';
-            app.WidthEditField_2Label.Position = [98 425 36 22];
+            app.WidthEditField_2Label.Position = [98 440 36 22];
             app.WidthEditField_2Label.Text = 'Width';
 
             % Create WidthEditField_2
             app.WidthEditField_2 = uieditfield(app.UIFigure, 'numeric');
             app.WidthEditField_2.ValueChangedFcn = createCallbackFcn(app, @WidthEditField_2ValueChanged, true);
-            app.WidthEditField_2.Position = [149 425 100 22];
+            app.WidthEditField_2.Position = [149 440 100 22];
 
             % Create HeightEditFieldLabel
             app.HeightEditFieldLabel = uilabel(app.UIFigure);
             app.HeightEditFieldLabel.HorizontalAlignment = 'right';
-            app.HeightEditFieldLabel.Position = [94 395 40 22];
+            app.HeightEditFieldLabel.Position = [94 410 40 22];
             app.HeightEditFieldLabel.Text = 'Height';
 
             % Create HeightEditField
             app.HeightEditField = uieditfield(app.UIFigure, 'numeric');
             app.HeightEditField.ValueChangedFcn = createCallbackFcn(app, @HeightEditFieldValueChanged, true);
-            app.HeightEditField.Position = [149 395 100 22];
+            app.HeightEditField.Position = [149 410 100 22];
 
             % Create HorizontalDivisionsEditFieldLabel
             app.HorizontalDivisionsEditFieldLabel = uilabel(app.UIFigure);
             app.HorizontalDivisionsEditFieldLabel.HorizontalAlignment = 'right';
-            app.HorizontalDivisionsEditFieldLabel.Position = [24 294 110 22];
+            app.HorizontalDivisionsEditFieldLabel.Position = [24 309 110 22];
             app.HorizontalDivisionsEditFieldLabel.Text = 'Horizontal Divisions';
 
             % Create HorizontalDivisionsEditField
             app.HorizontalDivisionsEditField = uieditfield(app.UIFigure, 'numeric');
             app.HorizontalDivisionsEditField.ValueChangedFcn = createCallbackFcn(app, @HorizontalDivisionsEditFieldValueChanged, true);
-            app.HorizontalDivisionsEditField.Position = [149 294 100 22];
+            app.HorizontalDivisionsEditField.Position = [149 309 100 22];
             app.HorizontalDivisionsEditField.Value = 1;
 
             % Create VerticalDivisionsEditFieldLabel
             app.VerticalDivisionsEditFieldLabel = uilabel(app.UIFigure);
             app.VerticalDivisionsEditFieldLabel.HorizontalAlignment = 'right';
-            app.VerticalDivisionsEditFieldLabel.Position = [38 251 96 22];
+            app.VerticalDivisionsEditFieldLabel.Position = [38 266 96 22];
             app.VerticalDivisionsEditFieldLabel.Text = 'Vertical Divisions';
 
             % Create VerticalDivisionsEditField
             app.VerticalDivisionsEditField = uieditfield(app.UIFigure, 'numeric');
             app.VerticalDivisionsEditField.ValueChangedFcn = createCallbackFcn(app, @VerticalDivisionsEditFieldValueChanged, true);
-            app.VerticalDivisionsEditField.Position = [149 251 100 22];
+            app.VerticalDivisionsEditField.Position = [149 266 100 22];
             app.VerticalDivisionsEditField.Value = 1;
 
             % Create PlaneDimensionsLabel
             app.PlaneDimensionsLabel = uilabel(app.UIFigure);
             app.PlaneDimensionsLabel.FontSize = 14;
             app.PlaneDimensionsLabel.FontWeight = 'bold';
-            app.PlaneDimensionsLabel.Position = [24 459 126 22];
+            app.PlaneDimensionsLabel.Position = [24 474 126 22];
             app.PlaneDimensionsLabel.Text = 'Plane Dimensions';
 
             % Create MeshOptionsLabel
             app.MeshOptionsLabel = uilabel(app.UIFigure);
             app.MeshOptionsLabel.FontSize = 14;
             app.MeshOptionsLabel.FontWeight = 'bold';
-            app.MeshOptionsLabel.Position = [24 332 98 22];
+            app.MeshOptionsLabel.Position = [24 347 98 22];
             app.MeshOptionsLabel.Text = 'Mesh Options';
 
             % Create BoundaryConditionsButtonGroup
             app.BoundaryConditionsButtonGroup = uibuttongroup(app.UIFigure);
             app.BoundaryConditionsButtonGroup.SelectionChangedFcn = createCallbackFcn(app, @BoundaryConditionsButtonGroupSelectionChanged, true);
             app.BoundaryConditionsButtonGroup.Title = 'Boundary Conditions';
-            app.BoundaryConditionsButtonGroup.Position = [282 404 176 67];
+            app.BoundaryConditionsButtonGroup.Position = [282 419 176 67];
 
             % Create DisplacementButton
             app.DisplacementButton = uitogglebutton(app.BoundaryConditionsButtonGroup);
@@ -515,61 +630,113 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             app.UITable.RowName = {'Node 1'; 'Node 2'; 'Node 3'; 'Node 4'; 'Side 1'; 'Side 2'; 'Side 3'; 'Side 4'};
             app.UITable.ColumnEditable = true;
             app.UITable.CellEditCallback = createCallbackFcn(app, @UITableCellEdit, true);
-            app.UITable.Position = [282 161 182 233];
+            app.UITable.Position = [282 176 182 233];
 
             % Create ProcessingLabel
             app.ProcessingLabel = uilabel(app.UIFigure);
             app.ProcessingLabel.FontSize = 14;
             app.ProcessingLabel.FontWeight = 'bold';
-            app.ProcessingLabel.Position = [33 82 224 22];
+            app.ProcessingLabel.Position = [33 97 224 22];
             app.ProcessingLabel.Text = 'Processing';
 
             % Create SolveButton
             app.SolveButton = uibutton(app.UIFigure, 'push');
             app.SolveButton.ButtonPushedFcn = createCallbackFcn(app, @SolveButtonPushed, true);
             app.SolveButton.FontSize = 24;
-            app.SolveButton.Position = [180 72 114 43];
+            app.SolveButton.Position = [180 87 114 43];
             app.SolveButton.Text = 'Solve';
 
             % Create EEditFieldLabel
             app.EEditFieldLabel = uilabel(app.UIFigure);
             app.EEditFieldLabel.HorizontalAlignment = 'right';
-            app.EEditFieldLabel.Position = [109 181 25 22];
+            app.EEditFieldLabel.Position = [109 196 25 22];
             app.EEditFieldLabel.Text = 'E';
 
             % Create EEditField
             app.EEditField = uieditfield(app.UIFigure, 'numeric');
-            app.EEditField.Position = [149 181 100 22];
+            app.EEditField.Position = [149 196 100 22];
             app.EEditField.Value = 200000000000;
 
             % Create PoissonsRatioEditFieldLabel
             app.PoissonsRatioEditFieldLabel = uilabel(app.UIFigure);
             app.PoissonsRatioEditFieldLabel.HorizontalAlignment = 'right';
-            app.PoissonsRatioEditFieldLabel.Position = [47 149 87 22];
+            app.PoissonsRatioEditFieldLabel.Position = [47 164 87 22];
             app.PoissonsRatioEditFieldLabel.Text = 'Poisson''s Ratio';
 
             % Create PoissonsRatioEditField
             app.PoissonsRatioEditField = uieditfield(app.UIFigure, 'numeric');
-            app.PoissonsRatioEditField.Position = [149 149 100 22];
+            app.PoissonsRatioEditField.Position = [149 164 100 22];
             app.PoissonsRatioEditField.Value = 0.3;
 
             % Create ThicknessEditFieldLabel
             app.ThicknessEditFieldLabel = uilabel(app.UIFigure);
             app.ThicknessEditFieldLabel.HorizontalAlignment = 'right';
-            app.ThicknessEditFieldLabel.Position = [75 362 59 22];
+            app.ThicknessEditFieldLabel.Position = [75 377 59 22];
             app.ThicknessEditFieldLabel.Text = 'Thickness';
 
             % Create ThicknessEditField
             app.ThicknessEditField = uieditfield(app.UIFigure, 'numeric');
             app.ThicknessEditField.ValueChangedFcn = createCallbackFcn(app, @ThicknessEditFieldValueChanged, true);
-            app.ThicknessEditField.Position = [149 362 100 22];
+            app.ThicknessEditField.Position = [149 377 100 22];
 
             % Create MaterialPropertiesLabel
             app.MaterialPropertiesLabel = uilabel(app.UIFigure);
             app.MaterialPropertiesLabel.FontSize = 14;
             app.MaterialPropertiesLabel.FontWeight = 'bold';
-            app.MaterialPropertiesLabel.Position = [24 216 131 22];
+            app.MaterialPropertiesLabel.Position = [24 231 131 22];
             app.MaterialPropertiesLabel.Text = 'Material Properties';
+
+            % Create CornerdButton
+            app.CornerdButton = uibutton(app.UIFigure, 'push');
+            app.CornerdButton.ButtonPushedFcn = createCallbackFcn(app, @CornerdButtonPushed, true);
+            app.CornerdButton.Enable = 'off';
+            app.CornerdButton.Position = [98 48 100 23];
+            app.CornerdButton.Text = 'Corner d';
+
+            % Create ShowLabel
+            app.ShowLabel = uilabel(app.UIFigure);
+            app.ShowLabel.Position = [24 48 35 22];
+            app.ShowLabel.Text = 'Show';
+
+            % Create CornerForceButton
+            app.CornerForceButton = uibutton(app.UIFigure, 'push');
+            app.CornerForceButton.Enable = 'off';
+            app.CornerForceButton.Position = [216 48 100 23];
+            app.CornerForceButton.Text = 'Corner Force';
+
+            % Create StressButton
+            app.StressButton = uibutton(app.UIFigure, 'push');
+            app.StressButton.ButtonPushedFcn = createCallbackFcn(app, @StressButtonPushed, true);
+            app.StressButton.Enable = 'off';
+            app.StressButton.Position = [338 48 100 23];
+            app.StressButton.Text = 'Stress';
+
+            % Create NodesdButton
+            app.NodesdButton = uibutton(app.UIFigure, 'push');
+            app.NodesdButton.ButtonPushedFcn = createCallbackFcn(app, @NodesdButtonPushed, true);
+            app.NodesdButton.Enable = 'off';
+            app.NodesdButton.Position = [98 13 100 23];
+            app.NodesdButton.Text = 'Nodes d';
+
+            % Create NodesForceButton
+            app.NodesForceButton = uibutton(app.UIFigure, 'push');
+            app.NodesForceButton.Enable = 'off';
+            app.NodesForceButton.Position = [216 13 100 23];
+            app.NodesForceButton.Text = 'Nodes Force';
+
+            % Create StrainButton
+            app.StrainButton = uibutton(app.UIFigure, 'push');
+            app.StrainButton.ButtonPushedFcn = createCallbackFcn(app, @StrainButtonPushed, true);
+            app.StrainButton.Enable = 'off';
+            app.StrainButton.Position = [338 13 100 23];
+            app.StrainButton.Text = 'Strain';
+
+            % Create KButton
+            app.KButton = uibutton(app.UIFigure, 'push');
+            app.KButton.ButtonPushedFcn = createCallbackFcn(app, @KButtonPushed, true);
+            app.KButton.Enable = 'off';
+            app.KButton.Position = [450 26 100 23];
+            app.KButton.Text = 'K';
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
