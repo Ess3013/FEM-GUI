@@ -45,6 +45,9 @@ classdef PlaneStress_exported < matlab.apps.AppBase
     methods (Access = private)
 
         function results = graph(app)
+
+
+            cla(app.UIAxes);
             if app.WidthEditField_2.Value~=0 && app.HeightEditField.Value~=0
                 [p,cl]=GenerateMesh(app.WidthEditField_2.Value,app.HeightEditField.Value,app.HorizontalDivisionsEditField.Value,app.VerticalDivisionsEditField.Value);
                 hold(app.UIAxes, 'all');
@@ -70,25 +73,155 @@ classdef PlaneStress_exported < matlab.apps.AppBase
 
                 %End of Finding Side nodes
 
+                app.setBoundaries();
+
             end
 
 
-            %% Boundary conditions
-            strock=max(app.WidthEditField_2.Value,app.HeightEditField.Value)/20
+            %% Plotting Boundary conditions
+            strock=max(app.WidthEditField_2.Value,app.HeightEditField.Value)/20;
+
+            appliedForce=app.poiForce+app.surfForce;
+
             for dm=1:size(app.NodeCoordinates,1)
+                %% Plotting Boundary conditions
                 if app.Boundary(2*dm-1,1)==0
-
                     plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)-strock,app.NodeCoordinates(dm,1)-strock,app.NodeCoordinates(dm,1)], ...
-                                    [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+(strock/2),app.NodeCoordinates(dm,2)-(strock/2),app.NodeCoordinates(dm,2)],'Color','b');
-
+                        [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+(strock/2),app.NodeCoordinates(dm,2)-(strock/2),app.NodeCoordinates(dm,2)],'Color','b');
                 elseif ~isnan(app.Boundary(2*dm-1,1))
+                    if app.Boundary(2*dm-1,1)>0
+                        plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+(strock/2),app.NodeCoordinates(dm,1)+strock,app.NodeCoordinates(dm,1)+1.5*strock], ...
+                            [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+(strock/2),app.NodeCoordinates(dm,2)-(strock/2),app.NodeCoordinates(dm,2)],'Color','b');
+                    else
+                        plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)-(strock/2),app.NodeCoordinates(dm,1)-strock,app.NodeCoordinates(dm,1)-1.5*strock], ...
+                            [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+(strock/2),app.NodeCoordinates(dm,2)-(strock/2),app.NodeCoordinates(dm,2)],'Color','b');
+                    end
+                end
 
+                if app.Boundary(2*dm,1)==0
+                    plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+(strock/2),app.NodeCoordinates(dm,1)-(strock/2),app.NodeCoordinates(dm,1)], ...
+                        [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)-(strock),app.NodeCoordinates(dm,2)-(strock),app.NodeCoordinates(dm,2)],'Color','b');
+                elseif ~isnan(app.Boundary(2*dm,1))
+                    if app.Boundary(2*dm,1)>0
+                        plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+(strock/2),app.NodeCoordinates(dm,1)-(strock/2),app.NodeCoordinates(dm,1)], ...
+                            [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+(strock/2),app.NodeCoordinates(dm,2)+(strock),app.NodeCoordinates(dm,2)+1.5*strock],'Color','b');
+                    else
+                        plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+(strock/2),app.NodeCoordinates(dm,1)-(strock/2),app.NodeCoordinates(dm,1)], ...
+                            [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)-(strock/2),app.NodeCoordinates(dm,2)-(strock),app.NodeCoordinates(dm,2)-1.5*strock],'Color','b');
+                    end
+                end
 
+                %% Plotting Forces
 
+                if appliedForce(2*dm-1,1)>0
+                    plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+2*strock,app.NodeCoordinates(dm,1)+strock,app.NodeCoordinates(dm,1)+2*strock,app.NodeCoordinates(dm,1)+strock], ...
+                        [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+0.5*strock,app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)-0.5*strock],'Color','r');
+                elseif appliedForce(2*dm-1,1)<0
+                    plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)-2*strock,app.NodeCoordinates(dm,1)-strock,app.NodeCoordinates(dm,1)+2*strock,app.NodeCoordinates(dm,1)-strock], ...
+                        [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+0.5*strock,app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)-0.5*strock],'Color','r');
+                end
+                if appliedForce(2*dm,1)>0
+                    plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+0.5*strock,app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)-0.5*strock], ...
+                        [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)+2*strock,app.NodeCoordinates(dm,2)+strock,app.NodeCoordinates(dm,2)+2*strock,app.NodeCoordinates(dm,2)+strock],'Color','r');
+                elseif appliedForce(2*dm,1)<0
+                    plot(app.UIAxes,[app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)+0.5*strock,app.NodeCoordinates(dm,1),app.NodeCoordinates(dm,1)-0.5*strock], ...
+                        [app.NodeCoordinates(dm,2),app.NodeCoordinates(dm,2)-2*strock,app.NodeCoordinates(dm,2)-strock,app.NodeCoordinates(dm,2)-2*strock,app.NodeCoordinates(dm,2)-strock],'Color','r');
                 end
 
             end
 
+            pbaspect(app.UIAxes, [1 1 1]);
+        end
+
+        function results = setBoundaries(app)
+
+            t = app.ThicknessEditField.Value;
+            coord = app.NodeCoordinates;
+            nodes = app.ElementNodes;
+            hDiv=app.HorizontalDivisionsEditField.Value;
+            vDiv=app.VerticalDivisionsEditField.Value;
+            width=app.WidthEditField_2.Value;
+            height=app.HeightEditField.Value;
+
+
+            %% Force Matrix
+            % Point Loads
+            pointForce=zeros(size(coord,1)*2,1);
+
+            pointForce(app.CornerNodes(1:4)*2-1,1)=app.Forces(1:4,1);
+            pointForce(app.CornerNodes(1:4)*2,1)=app.Forces(1:4,2);
+
+            app.poiForce=pointForce;
+
+            %Surface Loads
+            surfaceForce=zeros(size(coord,1)*2,1);
+            surfaceForce([app.SideNodes(1,1:hDiv+1)*2-1],1)=surfaceForce([app.SideNodes(1,1:hDiv+1)*2-1],1)+(app.Forces(5,1)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(1,1:hDiv+1)*2],1)=surfaceForce([app.SideNodes(1,1:hDiv+1)*2],1)+(app.Forces(5,2)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(2,1:vDiv+1)*2-1],1)=surfaceForce([app.SideNodes(2,1:vDiv+1)*2-1],1)+(app.Forces(6,1)*height*t)/(vDiv+1);
+            surfaceForce([app.SideNodes(2,1:vDiv+1)*2],1)=surfaceForce([app.SideNodes(2,1:vDiv+1)*2],1)+(app.Forces(6,2)*height*t)/(vDiv+1);
+            surfaceForce([app.SideNodes(3,1:hDiv+1)*2-1],1)=surfaceForce([app.SideNodes(3,1:hDiv+1)*2-1],1)+(app.Forces(7,1)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(3,1:hDiv+1)*2],1)=surfaceForce([app.SideNodes(3,1:hDiv+1)*2],1)+(app.Forces(7,2)*width*t)/(hDiv+1);
+            surfaceForce([app.SideNodes(4,1:vDiv+1)*2-1],1)=surfaceForce([app.SideNodes(4,1:vDiv+1)*2-1],1)+(app.Forces(8,1)*height*t)/(vDiv+1);
+            surfaceForce([app.SideNodes(4,1:vDiv+1)*2],1)=surfaceForce([app.SideNodes(4,1:vDiv+1)*2],1)+(app.Forces(8,2)*height*t)/(vDiv+1);
+
+            app.surfForce=surfaceForce;
+            %Body Loads
+
+
+            totalForce=pointForce+surfaceForce;
+
+
+            %% Boundary Conditions
+            boundaries=NaN(size(coord,1)*2,1);
+
+
+
+            for dm=1:hDiv+1
+                if ~isnan(app.Displacements(5,1))
+                    boundaries([app.SideNodes(1,1:hDiv+1)*2-1],1)=app.Displacements(5,1);
+                end
+                if ~isnan(app.Displacements(5,2))
+                    boundaries([app.SideNodes(1,1:hDiv+1)*2],1)=app.Displacements(5,2);
+                end
+                if ~isnan(app.Displacements(7,1))
+                    boundaries([app.SideNodes(3,1:hDiv+1)*2-1],1)=app.Displacements(7,1);
+                end
+                if ~isnan(app.Displacements(7,2))
+
+                    boundaries([app.SideNodes(3,1:hDiv+1)*2],1)=app.Displacements(7,2);
+                end
+            end
+
+
+            for dm=1:vDiv+1
+
+                if ~isnan(app.Displacements(6,1))
+                    boundaries([app.SideNodes(2,1:vDiv+1)*2-1],1)= app.Displacements(6,1);
+                end
+                if ~isnan(app.Displacements(6,2))
+                    boundaries([app.SideNodes(2,1:vDiv+1)*2],1)=app.Displacements(6,2);
+                end
+                if ~isnan(app.Displacements(8,1))
+
+                    boundaries([app.SideNodes(4,1:vDiv+1)*2-1],1)=app.Displacements(8,1);
+                end
+                if ~isnan(app.Displacements(8,2))
+                    boundaries([app.SideNodes(4,1:vDiv+1)*2],1)=app.Displacements(8,2);
+                end
+
+            end
+
+            for dm=1:4
+                if ~isnan(app.Displacements(dm,1))
+                    boundaries(app.CornerNodes(dm)*2-1,1)=app.Displacements(dm,1);
+                end
+                if ~isnan(app.Displacements(dm,2))
+
+                    boundaries(app.CornerNodes(dm)*2,1)=app.Displacements(dm,2);
+                end
+            end
+
+            app.Boundary=boundaries;
 
         end
     end
@@ -104,11 +237,6 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             app.Forces=zeros(8,2);
             app.UITable.Data=app.Displacements;
             app.ProcessingLabel.Text="Ready for inputs";
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%review%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-           app.Boundary=NaN(1000,1);
-           app.surfForce=zeros(1000,1);
-           app.poiForce=zeros(1000,1);
         end
 
         % Value changed function: WidthEditField_2
@@ -144,21 +272,27 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             elseif selectedButton.Text=="Force"
                 app.UITable.Data=app.Forces;
             end
+            app.graph()
         end
 
         % Cell edit callback: UITable
         function UITableCellEdit(app, event)
             selectedButton = app.BoundaryConditionsButtonGroup.SelectedObject;
+
             if selectedButton.Text=="Displacement"
                 app.Displacements=app.UITable.Data;
+
             elseif selectedButton.Text=="Force"
                 app.Forces=app.UITable.Data;
+
             end
+            app.graph()
 
         end
 
         % Button pushed function: SolveButton
         function SolveButtonPushed(app, event)
+            app.ProcessingLabel.Text="Solving ...";
             E = app.EEditField.Value;
             neu = app.PoissonsRatioEditField.Value;
             kGlobal = zeros(length(app.NodeCoordinates)*2);
@@ -239,87 +373,18 @@ classdef PlaneStress_exported < matlab.apps.AppBase
 
 
             end
-            %% Force Matrix
-            % Point Loads
-
-            pointForce(app.CornerNodes(1:4)*2-1,1)=app.Forces(1:4,1);
-            pointForce(app.CornerNodes(1:4)*2,1)=app.Forces(1:4,2);
-
-            app.poiForce=pointForce;
-
-            %Surface Loads
-            surfaceForce=zeros(size(coord,1)*2,1);
-            surfaceForce([app.SideNodes(1,1:hDiv+1)*2-1],1)=surfaceForce([app.SideNodes(1,1:hDiv+1)*2-1],1)+(app.Forces(5,1)*width*t)/(hDiv+1);
-            surfaceForce([app.SideNodes(1,1:hDiv+1)*2],1)=surfaceForce([app.SideNodes(1,1:hDiv+1)*2],1)+(app.Forces(5,2)*width*t)/(hDiv+1);
-            surfaceForce([app.SideNodes(2,1:vDiv+1)*2-1],1)=surfaceForce([app.SideNodes(2,1:vDiv+1)*2-1],1)+(app.Forces(6,1)*height*t)/(vDiv+1);
-            surfaceForce([app.SideNodes(2,1:vDiv+1)*2],1)=surfaceForce([app.SideNodes(2,1:vDiv+1)*2],1)+(app.Forces(6,2)*height*t)/(vDiv+1);
-            surfaceForce([app.SideNodes(3,1:hDiv+1)*2-1],1)=surfaceForce([app.SideNodes(3,1:hDiv+1)*2-1],1)+(app.Forces(7,1)*width*t)/(hDiv+1);
-            surfaceForce([app.SideNodes(3,1:hDiv+1)*2],1)=surfaceForce([app.SideNodes(3,1:hDiv+1)*2],1)+(app.Forces(7,2)*width*t)/(hDiv+1);
-            surfaceForce([app.SideNodes(4,1:vDiv+1)*2-1],1)=surfaceForce([app.SideNodes(4,1:vDiv+1)*2-1],1)+(app.Forces(8,1)*height*t)/(vDiv+1);
-            surfaceForce([app.SideNodes(4,1:vDiv+1)*2],1)=surfaceForce([app.SideNodes(4,1:vDiv+1)*2],1)+(app.Forces(8,2)*height*t)/(vDiv+1);
-
-            app.surfForce=surfaceForce;
-            %Body Loads
 
 
+            app.setBoundaries();
+            boundaries=app.Boundary;
+            pointForce=app.poiForce;
+            surfaceForce=app.surfForce;
             totalForce=pointForce+surfaceForce;
 
-
-            %% Boundary Conditions
-            boundaries=NaN(size(coord,1)*2,1);
-
-
-
-            for dm=1:hDiv+1
-                if ~isnan(app.Displacements(5,1))
-                    boundaries([app.SideNodes(1,1:hDiv+1)*2-1],1)=app.Displacements(5,1);
-                end
-                if ~isnan(app.Displacements(5,2))
-                    boundaries([app.SideNodes(1,1:hDiv+1)*2],1)=app.Displacements(5,2);
-                end
-                if ~isnan(app.Displacements(7,1))
-                    boundaries([app.SideNodes(3,1:hDiv+1)*2-1],1)=app.Displacements(7,1);
-                end
-                if ~isnan(app.Displacements(7,2))
-
-                    boundaries([app.SideNodes(3,1:hDiv+1)*2],1)=app.Displacements(7,2);
-                end
-            end
-
-
-            for dm=1:vDiv+1
-
-                if ~isnan(app.Displacements(6,1))
-                    boundaries([app.SideNodes(2,1:vDiv+1)*2-1],1)= app.Displacements(6,1);
-                end
-                if ~isnan(app.Displacements(6,2))
-                    boundaries([app.SideNodes(2,1:vDiv+1)*2],1)=app.Displacements(6,2);
-                end
-                if ~isnan(app.Displacements(8,1))
-
-                    boundaries([app.SideNodes(4,1:vDiv+1)*2-1],1)=app.Displacements(8,1);
-                end
-                if ~isnan(app.Displacements(8,2))
-                    boundaries([app.SideNodes(4,1:vDiv+1)*2],1)=app.Displacements(8,2);
-                end
-
-            end
-
-            for dm=1:4
-                if ~isnan(app.Displacements(1:dm,1))
-                    boundaries(app.CornerNodes(1:dm)*2-1,1)=app.Displacements(1:dm,1);
-                end
-                if ~isnan(app.Displacements(1:dm,2))
-
-                    boundaries(app.CornerNodes(1:dm)*2,1)=app.Displacements(1:dm,2);
-                end
-            end
-
-            app.Boundary=boundaries;
             %% Solve
             c=max(abs(diag(kGlobal)))*1e6  ;
 
-            for dm=1:size(app.CornerNodes,1)*2
+            for dm=1:size(boundaries,1)
 
                 if ~isnan(boundaries(dm))
 
@@ -329,13 +394,21 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             end
             app.graph();
             format long
-            c
-            kGlobal
-            boundaries
-            totalForce
-            cond(kGlobal)
-            Q=kGlobal\totalForce
+            c;
+            kGlobal;
+            boundaries;
+            totalForce;
+            cond(kGlobal);
+            Q=kGlobal\totalForce;
+            [Q(app.CornerNodes*2-1,1),Q(app.CornerNodes*2,1)]
 
+            app.ProcessingLabel.Text="Ready for Input";
+        end
+
+        % Value changed function: ThicknessEditField
+        function ThicknessEditFieldValueChanged(app, event)
+            value = app.ThicknessEditField.Value;
+            app.graph;
         end
     end
 
@@ -448,14 +521,14 @@ classdef PlaneStress_exported < matlab.apps.AppBase
             app.ProcessingLabel = uilabel(app.UIFigure);
             app.ProcessingLabel.FontSize = 14;
             app.ProcessingLabel.FontWeight = 'bold';
-            app.ProcessingLabel.Position = [39 83 224 22];
+            app.ProcessingLabel.Position = [33 82 224 22];
             app.ProcessingLabel.Text = 'Processing';
 
             % Create SolveButton
             app.SolveButton = uibutton(app.UIFigure, 'push');
             app.SolveButton.ButtonPushedFcn = createCallbackFcn(app, @SolveButtonPushed, true);
             app.SolveButton.FontSize = 24;
-            app.SolveButton.Position = [142 72 114 43];
+            app.SolveButton.Position = [180 72 114 43];
             app.SolveButton.Text = 'Solve';
 
             % Create EEditFieldLabel
@@ -488,6 +561,7 @@ classdef PlaneStress_exported < matlab.apps.AppBase
 
             % Create ThicknessEditField
             app.ThicknessEditField = uieditfield(app.UIFigure, 'numeric');
+            app.ThicknessEditField.ValueChangedFcn = createCallbackFcn(app, @ThicknessEditFieldValueChanged, true);
             app.ThicknessEditField.Position = [149 362 100 22];
 
             % Create MaterialPropertiesLabel
